@@ -481,11 +481,15 @@ async function fetchYahoo(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch('https://query2.finance.yahoo.com/v7/finance/quote?symbols=QQQ%2CMSFT%2CNVDA&fields=regularMarketPrice',{signal:ctrl.signal,headers:{Accept:'application/json'}});
+    // Vercel serverless proxy - same origin, no CORS issue
+    const r=await fetch('/api/stocks?symbols=QQQ,MSFT,NVDA',{signal:ctrl.signal});
     clearTimeout(tid);
     const d=await r.json();
+    if(!d.ok||!d.prices)throw new Error('proxy error');
     const res={};
-    (d?.quoteResponse?.result||[]).forEach(q=>{if(q.regularMarketPrice)res[q.symbol]={usd:q.regularMarketPrice,thb:q.regularMarketPrice*USD_THB}});
+    Object.entries(d.prices).forEach(([sym,p])=>{
+      res[sym]={usd:p.usd,thb:p.usd*USD_THB};
+    });
     return Object.keys(res).length>0?res:null;
   }catch{return null;}
 }
