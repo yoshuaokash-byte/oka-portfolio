@@ -45,10 +45,13 @@ export default async function handler(req, res) {
       fetchCrypto('fetch-ai'),
     ]);
 
+    // Sanity check for stooq values
+    const sanityCheck = (val, min, max) => (val && val >= min && val <= max) ? val : null;
+
     const prices = {
-      NVDA: nvda.status==='fulfilled' ? nvda.value : null,
-      QQQ:  qqq.status==='fulfilled'  ? qqq.value  : null,
-      MSFT: msft.status==='fulfilled' ? msft.value : null,
+      NVDA: sanityCheck(nvda.status==='fulfilled' ? nvda.value : null, 80, 400),
+      QQQ:  sanityCheck(qqq.status==='fulfilled'  ? qqq.value  : null, 400, 600),
+      MSFT: sanityCheck(msft.status==='fulfilled' ? msft.value : null, 300, 600),
       SOL:  sol.status==='fulfilled'  ? sol.value  : null,
       ETH:  eth.status==='fulfilled'  ? eth.value  : null,
       HYPE: hype.status==='fulfilled' ? hype.value : null,
