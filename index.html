@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OKA QUEST</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+JP:wght@300;400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f;--bg2:#0f0f1a;--bg3:#141428;
+  --gold:#ffd700;--gold2:#ffec6e;--gold-dim:#b8960c;
+  --green:#00ff88;--green2:#69ffb4;
+  --red:#ff4444;--blue:#4488ff;--purple:#cc66ff;
+  --gray:#999;--gray2:#666;
+  --border:#1e1e3a;--border2:#2a2a4a;
+  --hp-green:#22cc44;--hp-yellow:#ffcc00;--hp-red:#ff3333;
+  --xp:#00ccff;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:#e8e8ff;font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;font-size:18px}
+
+.px{font-family:'Press Start 2P',monospace}
+.mono{font-family:'JetBrains Mono',monospace}
+
+body::before{
+  content:'';position:fixed;top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+  pointer-events:none;z-index:999
+}
+
+/* ── HEADER ── */
+.hdr{
+  background:linear-gradient(180deg,#0f0f20 0%,#0a0a15 100%);
+  border-bottom:2px solid var(--gold-dim);
+  padding:14px 16px 12px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 4px 20px rgba(255,215,0,0.1);
+}
+.hdr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.logo{font-family:'Press Start 2P',monospace;font-size:20px;color:var(--gold);letter-spacing:1px;text-shadow:0 0 10px rgba(255,215,0,0.5)}
+.logo-sub{font-size:16px;color:var(--gray);font-family:'JetBrains Mono',monospace;letter-spacing:2px;margin-top:4px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.upd-time{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--gray)}
+.ref-btn{background:none;border:1px solid var(--gold-dim);color:var(--gold);padding:6px 14px;border-radius:4px;font-size:17px;cursor:pointer;font-family:'Press Start 2P',monospace;transition:all .2s}
+.ref-btn:active{background:var(--gold);color:#000}
+
+/* ── PLAYER CARD ── */
+.player-card{
+  background:linear-gradient(135deg,#0f0f20 0%,#141428 100%);
+  border:2px solid var(--gold-dim);
+  border-radius:10px;margin:12px;padding:16px;
+  position:relative;overflow:hidden;
+}
+.player-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  animation:shimmer 3s infinite;
+}
+@keyframes shimmer{0%{opacity:0.3}50%{opacity:1}100%{opacity:0.3}}
+
+.player-top{display:flex;align-items:center;margin-bottom:12px}
+.level-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:52px;height:52px;
+  border:2px solid var(--gold);border-radius:50%;
+  background:radial-gradient(circle,#1a1a00 0%,#0a0a00 100%);
+  box-shadow:0 0 14px rgba(255,215,0,0.3);
+  margin-right:14px;flex-shrink:0;
+}
+.level-num{font-family:'Press Start 2P',monospace;font-size:18px;color:var(--gold)}
+.player-name{font-family:'Press Start 2P',monospace;font-size:18px;color:var(--gold);margin-bottom:4px}
+.player-class{font-size:17px;color:var(--gray);font-family:'JetBrains Mono',monospace}
+
+/* ── BARS ── */
+.bar-section{margin:10px 0}
+.bar-label-row{display:flex;justify-content:space-between;margin-bottom:5px}
+.bar-label{font-size:16px;font-family:'Press Start 2P',monospace;color:var(--gray)}
+.bar-val{font-size:17px;font-family:'JetBrains Mono',monospace;color:#ccc}
+.bar-track{height:14px;background:#0a0a15;border:1px solid var(--border2);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width 1s ease;position:relative;overflow:hidden}
+.bar-fill::after{
+  content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+  animation:barshine 2s infinite;
+}
+@keyframes barshine{0%{left:-100%}100%{left:100%}}
+.goal-fill{background:linear-gradient(90deg,var(--gold-dim),var(--gold))}
+.xp-fill{background:linear-gradient(90deg,var(--xp),#0066ff)}
+
+/* ── NAV ── */
+.nav{display:flex;background:#0a0a15;border-bottom:2px solid var(--border2);overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{
+  flex:0 0 auto;padding:12px 14px;font-size:16px;color:var(--gray);
+  background:none;border:none;cursor:pointer;white-space:nowrap;
+  font-family:'Press Start 2P',monospace;
+  border-bottom:2px solid transparent;margin-bottom:-2px;
+  transition:all .2s;
+}
+.nav-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ── TAB ── */
+.tab{display:none;padding:12px}
+.tab.active{display:block}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{
+  font-family:'Press Start 2P',monospace;font-size:16px;color:var(--gold-dim);
+  letter-spacing:2px;margin:16px 0 10px;
+  padding-bottom:8px;border-bottom:1px solid var(--border2);
+}
+
+/* ── STATUS WINDOW ── */
+.status-window{
+  background:var(--bg2);border:2px solid var(--gold-dim);
+  border-radius:8px;padding:16px;margin-bottom:12px;position:relative;
+}
+.status-window::before{
+  content:'STATUS';font-family:'Press Start 2P',monospace;font-size:16px;
+  color:var(--gold-dim);position:absolute;top:-10px;left:12px;
+  background:var(--bg2);padding:0 8px;
+}
+.status-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.status-row:last-child{border-bottom:none}
+.status-key{font-size:17px;color:var(--gray);font-family:'JetBrains Mono',monospace}
+.status-val{font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700}
+
+/* ── ASSET CARD ── */
+.asset-card{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:8px;padding:16px;margin-bottom:10px;
+  position:relative;overflow:hidden;transition:all .2s;
+}
+.asset-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+}
+.asset-card.s-hold::before{background:var(--green)}
+.asset-card.s-watch::before{background:var(--gold)}
+.asset-card.s-sell::before{background:var(--red)}
+.asset-card.s-new::before{background:var(--blue)}
+
+.asset-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.asset-symbol{font-family:'Press Start 2P',monospace;font-size:18px;color:#fff}
+.asset-name{font-size:17px;color:var(--gray);margin-top:4px;font-family:'JetBrains Mono',monospace}
+
+.item-badge{
+  font-family:'Press Start 2P',monospace;font-size:16px;
+  padding:5px 10px;border-radius:4px;
+}
+.badge-hold{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid rgba(0,255,136,0.3)}
+.badge-watch{background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)}
+.badge-sell{background:rgba(255,68,68,0.15);color:var(--red);border:1px solid rgba(255,68,68,0.3)}
+.badge-new{background:rgba(68,136,255,0.15);color:var(--blue);border:1px solid rgba(68,136,255,0.3)}
+
+.asset-nums{display:flex;gap:10px;margin-top:4px}
+.asset-num-item{flex:1}
+.asset-num-label{font-size:16px;color:var(--gray);font-family:'JetBrains Mono',monospace;margin-bottom:3px}
+.asset-num-val{font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700}
+
+.asset-hp{margin-top:10px}
+.asset-hp-label{display:flex;justify-content:space-between;margin-bottom:4px}
+.asset-hp-text{font-size:17px;font-family:'JetBrains Mono',monospace;color:var(--gray)}
+
+/* ── ALLOCATION ── */
+.alloc-item{margin-bottom:8px}
+.alloc-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.alloc-name{font-size:17px;font-family:'JetBrains Mono',monospace;color:var(--gray);width:70px}
+.alloc-bar-wrap{flex:1;height:10px;background:#0a0a15;border-radius:3px;overflow:hidden}
+.alloc-bar{height:100%;border-radius:3px;transition:width 1s}
+.alloc-pct{font-size:17px;font-family:'JetBrains Mono',monospace;color:#ccc;width:40px;text-align:right}
+
+/* ── ALERTS ── */
+.alert-box{
+  border-radius:8px;padding:12px 14px;margin-bottom:10px;border-left:4px solid;
+}
+.alert-urgent{background:rgba(255,68,68,0.08);border-color:var(--red)}
+.alert-info{background:rgba(68,136,255,0.08);border-color:var(--blue)}
+.alert-gold{background:rgba(255,215,0,0.08);border-color:var(--gold)}
+.alert-title{font-family:'Press Start 2P',monospace;font-size:16px;margin-bottom:6px}
+.alert-urgent .alert-title{color:var(--red)}
+.alert-info .alert-title{color:var(--blue)}
+.alert-gold .alert-title{color:var(--gold)}
+.alert-body{font-size:17px;color:#bbb;line-height:1.6}
+
+/* ── QUEST ── */
+.quest-card{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:8px;padding:16px;margin-bottom:10px;
+}
+.quest-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.quest-icon{font-size:23px}
+.quest-title{font-family:'Press Start 2P',monospace;font-size:16px;color:#fff;flex:1}
+.quest-date{font-size:17px;color:var(--gray);font-family:'JetBrains Mono',monospace}
+.quest-desc{font-size:17px;color:#aaa;line-height:1.6;margin-bottom:10px}
+.quest-reward{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);
+  border-radius:4px;padding:5px 10px;
+  font-size:17px;color:var(--gold);font-family:'JetBrains Mono',monospace;
+}
+.quest-status{
+  font-family:'Press Start 2P',monospace;font-size:16px;
+  padding:4px 9px;border-radius:4px;margin-left:8px;
+}
+.q-active{background:rgba(0,204,255,0.15);color:var(--xp);border:1px solid rgba(0,204,255,0.3)}
+.q-urgent{background:rgba(255,68,68,0.15);color:var(--red);border:1px solid rgba(255,68,68,0.3)}
+.q-done{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.2)}
+
+/* ── RULES ── */
+.rule-item{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:8px;padding:12px 14px;margin-bottom:8px;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.rule-num{font-family:'Press Start 2P',monospace;font-size:16px;color:var(--gold);min-width:20px;padding-top:2px}
+.rule-icon{font-size:21px;min-width:24px}
+.rule-text{font-size:18px;color:#ccc;line-height:1.6}
+
+/* ── ACHIEVEMENT ── */
+.achievement{
+  display:flex;gap:12px;align-items:center;
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:8px;padding:14px;margin-bottom:8px;
+}
+.ach-icon{font-size:27px;min-width:36px;text-align:center}
+.ach-title{font-family:'Press Start 2P',monospace;font-size:16px;color:var(--gold);margin-bottom:5px}
+.ach-desc{font-size:17px;color:var(--gray);line-height:1.5}
+.ach-locked{opacity:0.35;filter:grayscale(1)}
+
+/* ── IMPORT ── */
+.import-area{
+  border:2px dashed var(--border2);border-radius:10px;
+  padding:28px;text-align:center;margin-bottom:12px;cursor:pointer;transition:all .2s;
+}
+.import-area:hover{border-color:var(--gold-dim)}
+.import-icon{font-size:35px;margin-bottom:10px}
+.import-text{font-size:18px;color:var(--gray);line-height:1.7}
+.import-btn{
+  background:var(--gold-dim);color:#000;border:none;
+  padding:12px 20px;border-radius:5px;font-family:'Press Start 2P',monospace;
+  font-size:16px;cursor:pointer;width:100%;margin-top:12px;
+}
+
+/* ── PIXEL DIVIDER ── */
+.px-divider{
+  text-align:center;color:var(--gold-dim);
+  font-family:'Press Start 2P',monospace;font-size:16px;
+  margin:14px 0;letter-spacing:4px;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.tab.active>*{animation:fadeIn 0.3s ease forwards}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="logo px">⚔ OKA QUEST</div>
+      <div class="logo-sub">INVESTMENT RPG v4.0</div>
+    </div>
+    <div class="hdr-right">
+      <div class="live-dot"></div>
+      <div class="upd-time mono" id="updTime">LOADING...</div>
+      <button class="ref-btn" onclick="refreshAll()">↻</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="showTab('status')">STATUS</button>
+  <button class="nav-btn" onclick="showTab('inventory')">INVENTORY</button>
+  <button class="nav-btn" onclick="showTab('quest')">QUEST</button>
+  <button class="nav-btn" onclick="showTab('rules')">RULES</button>
+  <button class="nav-btn" onclick="showTab('import')">IMPORT</button>
+</div>
+
+<!-- ══════════════ STATUS TAB ══════════════ -->
+<div id="tab-status" class="tab active">
+
+  <!-- PLAYER CARD -->
+  <div class="player-card">
+    <div class="player-top">
+      <div class="level-badge">
+        <div class="level-num px" id="playerLevel">1</div>
+      </div>
+      <div class="player-info">
+        <div class="player-name">YOSHUA OKA</div>
+        <div class="player-class">CLASS: GROWTH INVESTOR</div>
+      </div>
+    </div>
+
+    <!-- HP BAR (総資産 vs 目標) -->
+    <div class="bar-section">
+      <div class="bar-label-row">
+        <div class="bar-label">💰 GOLD</div>
+        <div class="bar-val mono" id="hpText">฿0 / ฿2,000,000</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill goal-fill" id="hpBar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- XP BAR (年利30%達成率) -->
+    <div class="bar-section">
+      <div class="bar-label-row">
+        <div class="bar-label">✨ EXP (年利30%達成率)</div>
+        <div class="bar-val mono" id="xpText">0%</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill xp-fill" id="xpBar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS WINDOW -->
+  <div class="px-divider">─── STATS ───</div>
+  <div style="padding:0 12px">
+    <div class="status-window">
+      <div class="status-row">
+        <div class="status-key">総資産</div>
+        <div class="status-val stat-gold" id="s-total">฿---</div>
+      </div>
+      <div class="status-row">
+        <div class="status-key">株式 (USD)</div>
+        <div class="status-val" id="s-stocks">$---</div>
+      </div>
+      <div class="status-row">
+        <div class="status-key">クリプト (THB)</div>
+        <div class="status-val" id="s-crypto">฿---</div>
+      </div>
+      <div class="status-row">
+        <div class="status-key">含み損益</div>
+        <div class="status-val" id="s-pnl">฿---</div>
+      </div>
+      <div class="status-row">
+        <div class="status-key">目標まで</div>
+        <div class="status-val" id="s-remain">฿---</div>
+      </div>
+    </div>
+
+    <!-- ALLOCATION -->
+    <div class="px-divider">─── PARTY ───</div>
+    <div id="allocSection"></div>
+
+    <!-- ALERTS -->
+    <div class="px-divider">─── EVENTS ───</div>
+    <div id="alertSection"></div>
+  </div>
+</div>
+
+<!-- ══════════════ INVENTORY TAB ══════════════ -->
+<div id="tab-inventory" class="tab">
+  <div class="sec-hdr">⚔ 米国株</div>
+  <div id="stockList"></div>
+  <div class="sec-hdr">🪙 クリプト</div>
+  <div id="cryptoList"></div>
+</div>
+
+<!-- ══════════════ QUEST TAB ══════════════ -->
+<div id="tab-quest" class="tab">
+  <div class="sec-hdr">🔥 アクティブクエスト</div>
+  <div id="questList"></div>
+  <div class="sec-hdr">🏆 実績</div>
+  <div id="achieveList"></div>
+</div>
+
+<!-- ══════════════ RULES TAB ══════════════ -->
+<div id="tab-rules" class="tab">
+  <div class="sec-hdr">📜 投資ルール</div>
+  <div id="rulesList"></div>
+</div>
+
+<!-- ══════════════ IMPORT TAB ══════════════ -->
+<div id="tab-import" class="tab">
+  <div class="sec-hdr">📸 スクショ取込</div>
+  <div class="import-area" id="importDrop" onclick="document.getElementById('imgInput').click()">
+    <div class="import-icon">📷</div>
+    <div class="import-text">Bitkub または InnovestX の<br>スクショをアップロード</div>
+    <button class="import-btn">UPLOAD IMAGE</button>
+  </div>
+  <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="handleImport(this)">
+  <div id="importResult"></div>
+</div>
+
+<script>
+// ═══════════════ DATA ═══════════════
+let USD_THB = 35.7;
+const GOAL = 2000000;
+const ANNUAL_TARGET = 0.30;
+
+const RULES = [
+  {icon:'⚔',text:'SOL・ETHが+50%超えたら25%利確→QQQへ'},
+  {icon:'🛡',text:'SUI・FET枠-40%超えたら即撤退'},
+  {icon:'📈',text:'NVDA：$260超→1株利確 / $190割れ→即撤退'},
+  {icon:'💥',text:'停戦合意発表の瞬間にSOL・HYPEを即買い増し（฿20,000〜40,000弾確保）'},
+  {icon:'🚫',text:'ミームコイン・ナラティブ切れ銘柄は買わない'},
+  {icon:'⏱',text:'XRP・FET：2週間反発なければ整理→SOL/HYPEへ'},
+  {icon:'💰',text:'毎月฿20,000機械的積み立て継続'},
+];
+
+const QUESTS = [
+  {icon:'🗓',title:'NVDA決算',date:'5/20',desc:'$260超→1株利確 / $190割れ→即撤退。今月最重要イベント。',reward:'利益確定チャンス',status:'active'},
+  {icon:'⚠️',title:'XRP・FET判断',date:'5/15',desc:'2週間反発なければSOL/HYPEへ集中。期限厳守。',reward:'ポジション整理',status:'urgent'},
+  {icon:'🕊',title:'停戦合意監視',date:'随時',desc:'ホルムズ海峡開通→即SOL・HYPE買い増し。฿20,000〜40,000の弾を維持せよ。',reward:'฿20,000〜40,000即投入',status:'active'},
+  {icon:'📊',title:'任天堂決算',date:'5/8',desc:'Switch 2好調。来期予想が強ければ買い検討。',reward:'日本株エントリー判断',status:'active'},
+  {icon:'🚢',title:'日本郵船決算',date:'5/11',desc:'来期増益予想・配当維持なら買い。PBR0.7倍台で下値限定。',reward:'高配当株ポジション',status:'active'},
+  {icon:'💎',title:'月積み立て',date:'毎月',desc:'฿20,000を機械的に積み立て。感情で止めない。',reward:'฿20,000/月',status:'done'},
+];
+
+const ACHIEVEMENTS = [
+  {icon:'🏆',title:'FIRST BLOOD',desc:'WIF・MPLXを損切りしてゴミを一掃',locked:false},
+  {icon:'⚔️',title:'NEW RECRUIT',desc:'HYPEを新規取得。DEX覇者を手に入れた',locked:false},
+  {icon:'🌙',title:'HODLer',desc:'SOL下落中も信念を持ってHOLD',locked:false},
+  {icon:'💫',title:'RULE KEEPER',desc:'7つのルールをすべて守り続ける',locked:true},
+  {icon:'🚀',title:'CEASEFIRE RUSH',desc:'停戦合意と同時に即買い増しを実行',locked:true},
+  {icon:'💰',title:'LEVEL 10',desc:'総資産฿1,000,000達成',locked:true},
+  {icon:'👑',title:'GOLD RANK',desc:'総資産฿2,000,000達成（目標達成）',locked:true},
+];
+
+// ═══════════════ STORAGE ═══════════════
+const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}};
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+
+let stocks = ld('rpg_stk',[
+  {symbol:'QQQ',name:'Invesco QQQ',qty:7.09,cost:99683,cc:'THB',type:'stock'},
+  {symbol:'MSFT',name:'Microsoft',qty:3,cost:46827,cc:'THB',type:'stock'},
+  {symbol:'NVDA',name:'NVIDIA Corp',qty:3,cost:21773,cc:'THB',type:'stock'}
+]);
+let cryptos = ld('rpg_cry',[
+  {symbol:'SOL',name:'Solana',qty:10.54189518,cost:35132,cc:'THB',type:'crypto'},
+  {symbol:'SUI',name:'Sui',qty:471.83908774,cost:17191,cc:'THB',type:'crypto'},
+  {symbol:'FET',name:'Fetch.ai',qty:1777.09471252,cost:14078,cc:'THB',type:'crypto'},
+  {symbol:'ETH',name:'Ethereum',qty:0.11960145,cost:10925,cc:'THB',type:'crypto'},
+  {symbol:'HYPE',name:'Hyperliquid',qty:4.77150559,cost:7688,cc:'THB',type:'crypto'},
+  {symbol:'XRP',name:'XRP',qty:72.38652482,cost:3985,cc:'THB',type:'crypto'}
+]);
+
+// ═══════════════ PRICES ═══════════════
+const FALLBACK={
+  SOL:{thb:2738,usd:76.7},SUI:{thb:30,usd:0.84},FET:{thb:6.5,usd:0.18},
+  ETH:{thb:75000,usd:2100},HYPE:{thb:1323,usd:37},XRP:{thb:45,usd:1.26},
+  QQQ:{usd:476},MSFT:{usd:413},NVDA:{usd:200}
+};
+let prices={};
+
+function setFallback(){
+  Object.entries(FALLBACK).forEach(([s,p])=>{
+    if(p.thb)prices[s]={thb:p.thb,usd:p.usd};
+    else prices[s]={usd:p.usd,thb:p.usd*USD_THB};
+  });
+}
+
+function fetchWT(url,opts={},ms=8000){
+  return Promise.race([
+    fetch(url,opts),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))
+  ]);
+}
+
+async function fetchCoinGecko(){
+  try{
+    const ids='solana,sui,fetch-ai,ethereum,hyperliquid,ripple';
+    const r=await fetchWT(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=thb,usd`,{},10000);
+    if(!r.ok)throw new Error('cg');
+    const d=await r.json();
+    const map={solana:'SOL',sui:'SUI','fetch-ai':'FET',ethereum:'ETH',hyperliquid:'HYPE',ripple:'XRP'};
+    const res={};
+    Object.entries(map).forEach(([id,sym])=>{if(d[id])res[sym]={thb:d[id].thb,usd:d[id].usd}});
+    return Object.keys(res).length>0?res:null;
+  }catch{return null;}
+}
+
+async function fetchYahoo(){
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch('https://query2.finance.yahoo.com/v7/finance/quote?symbols=QQQ%2CMSFT%2CNVDA&fields=regularMarketPrice',{signal:ctrl.signal,headers:{Accept:'application/json'}});
+    clearTimeout(tid);
+    const d=await r.json();
+    const res={};
+    (d?.quoteResponse?.result||[]).forEach(q=>{if(q.regularMarketPrice)res[q.symbol]={usd:q.regularMarketPrice,thb:q.regularMarketPrice*USD_THB}});
+    return Object.keys(res).length>0?res:null;
+  }catch{return null;}
+}
+
+async function fetchFX(){
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch('https://api.exchangerate-api.com/v4/latest/USD',{signal:ctrl.signal});
+    clearTimeout(tid);
+    const d=await r.json();
+    if(d.rates?.THB)USD_THB=d.rates.THB;
+  }catch{}
+}
+
+let isRefreshing=false;
+async function refreshAll(){
+  if(isRefreshing)return;
+  isRefreshing=true;
+  const btn=document.querySelector('.ref-btn');
+  if(btn)btn.textContent='...';
+  const lbl=document.getElementById('updTime');
+  if(lbl)lbl.textContent='LOADING...';
+
+  setFallback();
+  renderAll();
+
+  try{
+    await fetchFX();
+    const [cg,yf]=await Promise.allSettled([fetchCoinGecko(),fetchYahoo()]);
+    let cs='',ss='';
+    if(cg.status==='fulfilled'&&cg.value){Object.assign(prices,cg.value);cs='✅';}else cs='⚠️';
+    if(yf.status==='fulfilled'&&yf.value){Object.assign(prices,yf.value);ss='✅';}else ss='⚠️';
+    sv('rpg_px',prices);sv('rpg_pxt',Date.now());
+    const n=new Date();
+    if(lbl)lbl.textContent=`${n.getHours()}:${String(n.getMinutes()).padStart(2,'0')} CRYPTO${cs} STK${ss}`;
+  }catch{
+    const c=ld('rpg_px',null);
+    if(c)Object.assign(prices,c);
+    if(lbl)lbl.textContent='OFFLINE';
+  }
+  if(btn)btn.textContent='↻';
+  isRefreshing=false;
+  renderAll();
+}
+
+// ═══════════════ CALC ═══════════════
+const aVal=a=>{const p=prices[a.symbol];if(!p)return 0;return a.type==='stock'?a.qty*(p.usd||0)*USD_THB:a.qty*(p.thb||0)};
+const pnl=a=>{const v=aVal(a),c=a.cost;return {amt:v-c,pct:c>0?(v-c)/c*100:0}};
+const fmt=n=>Math.abs(n)>=1000000?`฿${(n/1000000).toFixed(2)}M`:Math.abs(n)>=1000?`฿${Math.round(n).toLocaleString()}`:`฿${n.toFixed(0)}`;
+const fmtUSD=n=>`$${n.toLocaleString(undefined,{maximumFractionDigits:0})}`;
+const clr=n=>n>=0?'var(--green)':'var(--red)';
+const sign=n=>n>=0?'+':'';
+
+function calcTotals(){
+  const allAssets=[...stocks,...cryptos];
+  const totalVal=allAssets.reduce((s,a)=>s+aVal(a),0);
+  const totalCost=allAssets.reduce((s,a)=>s+a.cost,0);
+  const pnlAmt=totalVal-totalCost;
+  const pnlPct=totalCost>0?pnlAmt/totalCost*100:0;
+  const stockVal=stocks.reduce((s,a)=>s+aVal(a),0);
+  const cryptoVal=cryptos.reduce((s,a)=>s+aVal(a),0);
+  return{totalVal,totalCost,pnlAmt,pnlPct,stockVal,cryptoVal};
+}
+
+function calcLevel(totalVal){
+  if(totalVal<100000)return 1;
+  if(totalVal<200000)return 2;
+  if(totalVal<300000)return 3;
+  if(totalVal<500000)return 5;
+  if(totalVal<700000)return 7;
+  if(totalVal<1000000)return 9;
+  if(totalVal<1500000)return 12;
+  if(totalVal<2000000)return 15;
+  return 20;
+}
+
+// ═══════════════ RENDER ═══════════════
+function renderAll(){
+  const t=calcTotals();
+  renderStatus(t);
+  renderInventory();
+  renderQuests();
+  renderRules();
+  renderAchievements();
+}
+
+function renderStatus(t){
+  // Level
+  const lv=calcLevel(t.totalVal);
+  document.getElementById('playerLevel').textContent=lv;
+
+  // HP Bar (Gold / Goal)
+  const hpPct=Math.min(100,t.totalVal/GOAL*100);
+  document.getElementById('hpBar').style.width=hpPct+'%';
+  document.getElementById('hpBar').style.background=hpPct<30?'linear-gradient(90deg,#ff3333,#ff6666)':hpPct<70?'linear-gradient(90deg,#ffcc00,#ffd700)':'linear-gradient(90deg,var(--gold-dim),var(--gold))';
+  document.getElementById('hpText').textContent=`${fmt(t.totalVal)} / ${fmt(GOAL)}`;
+
+  // XP Bar (年利目標達成率)
+  const yearTarget=t.totalCost*ANNUAL_TARGET;
+  const xpPct=yearTarget>0?Math.min(100,Math.max(0,t.pnlAmt/yearTarget*100)):0;
+  document.getElementById('xpBar').style.width=xpPct+'%';
+  document.getElementById('xpText').textContent=`${xpPct.toFixed(1)}%`;
+
+  // Status
+  document.getElementById('s-total').textContent=fmt(t.totalVal);
+  document.getElementById('s-total').style.color=clr(t.pnlAmt);
+  const stockUSD=stocks.reduce((s,a)=>{const p=prices[a.symbol];return s+(p?a.qty*(p.usd||0):0)},0);
+  document.getElementById('s-stocks').textContent=fmtUSD(stockUSD);
+  document.getElementById('s-crypto').textContent=fmt(t.cryptoVal);
+  document.getElementById('s-pnl').innerHTML=`<span style="color:${clr(t.pnlAmt)}">${sign(t.pnlAmt)}${fmt(Math.abs(t.pnlAmt))} (${sign(t.pnlPct)}${t.pnlPct.toFixed(1)}%)</span>`;
+  document.getElementById('s-remain').textContent=fmt(Math.max(0,GOAL-t.totalVal));
+
+  // Allocation
+  const total=t.totalVal||1;
+  const allocs=[
+    {name:'米国株',val:t.stockVal,color:'#4488ff'},
+    {name:'クリプト',val:t.cryptoVal,color:'#cc66ff'},
+  ];
+  document.getElementById('allocSection').innerHTML=allocs.map(a=>{
+    const pct=a.val/total*100;
+    return`<div class="alloc-item">
+      <div class="alloc-row">
+        <div class="alloc-name">${a.name}</div>
+        <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:${a.color}"></div></div>
+        <div class="alloc-pct">${pct.toFixed(1)}%</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Alerts
+  const alerts=[
+    {type:'urgent',title:'⚠ NVDA決算 5月20日',body:'$260超→1株利確 / $190割れ→即撤退。ルールを今確認してく。'},
+    {type:'info',title:'📅 XRP・FET 判断期限 5月15日',body:'2週間で反発なければSOL/HYPEへ整理。'},
+    {type:'gold',title:'🕊 停戦弾キープ',body:'฿20,000〜40,000のキャッシュを確保せよ。合意の瞬間が勝負。'},
+  ];
+  document.getElementById('alertSection').innerHTML=alerts.map(a=>`
+    <div class="alert-box alert-${a.type}">
+      <div class="alert-title">${a.title}</div>
+      <div class="alert-body">${a.body}</div>
+    </div>`).join('');
+}
+
+function getStatus(a){
+  const{pct}=pnl(a);
+  if(a.symbol==='HYPE')return{cls:'s-new',badge:'NEW',badgeCls:'badge-new'};
+  if(a.symbol==='XRP'||a.symbol==='FET')return{cls:'s-watch',badge:'WATCH',badgeCls:'badge-watch'};
+  if(pct<=-40)return{cls:'s-sell',badge:'SELL',badgeCls:'badge-sell'};
+  return{cls:'s-hold',badge:'HOLD',badgeCls:'badge-hold'};
+}
+
+function renderInventory(){
+  const renderAssets=(list,el)=>{
+    document.getElementById(el).innerHTML=list.map(a=>{
+      const v=aVal(a);
+      const{amt,pct}=pnl(a);
+      const st=getStatus(a);
+      const p=prices[a.symbol];
+      const priceStr=a.type==='stock'?`$${(p?.usd||0).toFixed(2)}`:`฿${(p?.thb||0).toLocaleString(undefined,{maximumFractionDigits:2})}`;
+      const hpPct=Math.min(100,Math.max(0,v/a.cost*100));
+      const hpColor=hpPct>=100?'var(--hp-green)':hpPct>=70?'var(--hp-yellow)':'var(--hp-red)';
+      return`<div class="asset-card ${st.cls}">
+        <div class="asset-top">
+          <div>
+            <div class="asset-symbol">${a.symbol}</div>
+            <div class="asset-name">${a.name}</div>
+          </div>
+          <div class="item-badge ${st.badgeCls}">${st.badge}</div>
+        </div>
+        <div class="asset-nums">
+          <div class="asset-num-item">
+            <div class="asset-num-label">VALUE</div>
+            <div class="asset-num-val" style="color:var(--gold)">${fmt(v)}</div>
+          </div>
+          <div class="asset-num-item">
+            <div class="asset-num-label">P&L</div>
+            <div class="asset-num-val" style="color:${clr(amt)}">${sign(amt)}${fmt(Math.abs(amt))}</div>
+          </div>
+          <div class="asset-num-item">
+            <div class="asset-num-label">PRICE</div>
+            <div class="asset-num-val" style="font-size:10px;color:#ccc">${priceStr}</div>
+          </div>
+        </div>
+        <div class="asset-hp">
+          <div class="asset-hp-label">
+            <div class="asset-hp-text">HP ${hpPct.toFixed(0)}%</div>
+            <div class="asset-hp-text" style="color:${clr(pct)}">${sign(pct)}${pct.toFixed(1)}%</div>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${hpPct}%;background:${hpColor}"></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  };
+  renderAssets(stocks,'stockList');
+  renderAssets(cryptos,'cryptoList');
+}
+
+function renderQuests(){
+  document.getElementById('questList').innerHTML=QUESTS.map(q=>`
+    <div class="quest-card">
+      <div class="quest-header">
+        <div class="quest-icon">${q.icon}</div>
+        <div class="quest-title">${q.title}</div>
+        <div class="quest-date mono">${q.date}</div>
+      </div>
+      <div class="quest-desc">${q.desc}</div>
+      <div style="display:flex;align-items:center">
+        <div class="quest-reward">🏆 ${q.reward}</div>
+        <div class="quest-status q-${q.status}">${q.status==='active'?'ACTIVE':q.status==='urgent'?'URGENT':'DONE'}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderRules(){
+  document.getElementById('rulesList').innerHTML=RULES.map((r,i)=>`
+    <div class="rule-item">
+      <div class="rule-num">${i+1}</div>
+      <div style="font-size:16px;min-width:20px">${r.icon}</div>
+      <div class="rule-text">${r.text}</div>
+    </div>`).join('');
+}
+
+function renderAchievements(){
+  document.getElementById('achieveList').innerHTML=ACHIEVEMENTS.map(a=>`
+    <div class="achievement ${a.locked?'ach-locked':''}">
+      <div class="ach-icon">${a.icon}</div>
+      <div>
+        <div class="ach-title">${a.title}</div>
+        <div class="ach-desc">${a.locked?'???':a.desc}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════ TAB ═══════════════
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ═══════════════ IMPORT ═══════════════
+function handleImport(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const res=document.getElementById('importResult');
+    res.innerHTML='<div style="text-align:center;padding:20px;font-family:\'Press Start 2P\',monospace;font-size:8px;color:var(--xp)">AI ANALYZING...</div>';
+    try{
+      const base64=e.target.result.split(',')[1];
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:1000,
+          messages:[{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+            {type:'text',text:'このBitkubまたはInnovestXのスクショから価格データをJSON形式で抽出してください。{"prices":{"SOL":数値,"ETH":数値,...}}のTHB価格または{"stocks":{"QQQ":{"usd":数値},...}}のUSD価格で返してください。数値のみ、単位なし。'}
+          ]}]
+        })
+      });
+      const d=await resp.json();
+      const txt=d.content?.[0]?.text||'';
+      const match=txt.match(/\{[\s\S]*\}/);
+      if(match){
+        const data=JSON.parse(match[0]);
+        if(data.prices)Object.entries(data.prices).forEach(([k,v])=>{if(prices[k])prices[k].thb=v});
+        if(data.stocks)Object.entries(data.stocks).forEach(([k,v])=>{if(prices[k]&&v.usd)prices[k].usd=v.usd});
+        sv('rpg_px',prices);
+        renderAll();
+        res.innerHTML='<div style="text-align:center;padding:12px;font-family:\'Press Start 2P\',monospace;font-size:8px;color:var(--green)">✅ DATA IMPORTED!</div>';
+      }else{
+        res.innerHTML='<div style="text-align:center;padding:12px;font-family:\'Press Start 2P\',monospace;font-size:8px;color:var(--red)">❌ PARSE ERROR</div>';
+      }
+    }catch(err){
+      res.innerHTML='<div style="text-align:center;padding:12px;font-family:\'Press Start 2P\',monospace;font-size:8px;color:var(--red)">❌ FAILED</div>';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════ INIT ═══════════════
+window.addEventListener('load',()=>{
+  const VER='rpg_v1';
+  if(ld('rpg_ver','')!==VER){
+    ['rpg_stk','rpg_cry','rpg_px','rpg_pxt'].forEach(k=>localStorage.removeItem(k));
+    sv('rpg_ver',VER);
+  }
+  const t=ld('rpg_pxt',0),c=ld('rpg_px',null);
+  if(c){Object.assign(prices,c);
+    const d=new Date(t);
+    document.getElementById('updTime').textContent=`${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')} CACHE`;
+  }
+  if(!c||Date.now()-t>5*60*1000)refreshAll();
+  else{setFallback();Object.assign(prices,c);renderAll();}
+});
+</script>
+</body>
+</html>
