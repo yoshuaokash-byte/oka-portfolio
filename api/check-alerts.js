@@ -3,7 +3,7 @@ const LINE_USER_ID = process.env.LINE_USER_ID;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
 async function sendLINE(message) {
-  await fetch('https://api.line.me/v2/bot/message/push', {
+  const r = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -14,12 +14,40 @@ async function sendLINE(message) {
       messages: [{ type: 'text', text: message }]
     })
   });
+  const d = await r.json();
+  if (!r.ok) throw new Error('LINE error: ' + JSON.stringify(d));
 }
 
-async function fetchCrypto() {
-  const ids = 'solana,ethereum,hyperliquid,ripple,fetch-ai,sui';
-  const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,thb`);
-  return await r.json();
+// Binance API - no auth, reliable, CORS friendly
+async function fetchCryptoFromBinance() {
+  const pairs = ['SOLUSDT','ETHUSDT','XRPUSDT','SUIUSDT'];
+  const results = await Promise.allSettled(
+    pairs.map(async pair => {
+      const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${pair}`);
+      const d = await r.json();
+      return { pair, price: parseFloat(d.price) };
+    })
+  );
+  const prices = {};
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      const sym = r.value.pair.replace('USDT','');
+      prices[sym] = r.value.price;
+    }
+  });
+  return prices;
+}
+
+// HYPE and FET from CoinGecko with retry
+async function fetchFromCoinGecko() {
+  try {
+    const r = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=hyperliquid,fetch-ai&vs_currencies=usd,thb',
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!r.ok) throw new Error('CG ' + r.status);
+    return await r.json();
+  } catch { return {}; }
 }
 
 async function fetchUSDTHB() {
@@ -32,64 +60,52 @@ async function fetchUSDTHB() {
 
 async function getAIAnalysis(prices, usdThb, alerts) {
   try {
-    const portfolio = {
-      stocks: {
-        QQQ:  { price: prices.QQQ,  qty: 7.09,          cost_usd: 2792, pnl_pct: ((prices.QQQ  - 2792/7.09) / (2792/7.09) * 100).toFixed(1) },
-        MSFT: { price: prices.MSFT, qty: 3,              cost_usd: 1312, pnl_pct: ((prices.MSFT - 1312/3)   / (1312/3)   * 100).toFixed(1) },
-        NVDA: { price: prices.NVDA, qty: 3,              cost_usd: 610,  pnl_pct: ((prices.NVDA - 610/3)    / (610/3)    * 100).toFixed(1) },
-      },
-      crypto: {
-        SOL:  { price_usd: prices.SOL,  qty: 10.54, cost_thb: 35132, pnl_pct: prices.SOL_THB ? ((prices.SOL_THB  - 35132/10.54) / (35132/10.54) * 100).toFixed(1) : '?' },
-        ETH:  { price_usd: prices.ETH,  qty: 0.1196, cost_thb: 10925, pnl_pct: prices.ETH_THB ? ((prices.ETH_THB  - 10925/0.1196) / (10925/0.1196) * 100).toFixed(1) : '?' },
-        HYPE: { price_usd: prices.HYPE, qty: 4.77, cost_thb: 7688,  pnl_pct: prices.HYPE_THB ? ((prices.HYPE_THB - 7688/4.77)   / (7688/4.77)   * 100).toFixed(1) : '?' },
-        XRP:  { price_usd: prices.XRP,  qty: 72.39, cost_thb: 3985,  pnl_pct: prices.XRP_THB ? ((prices.XRP_THB  - 3985/72.39)  / (3985/72.39)  * 100).toFixed(1) : '?' },
-        FET:  { price_thb: prices.FET,  qty: 1777, cost_thb: 14078, pnl_pct: prices.FET ? ((prices.FET - 14078/1777) / (14078/1777) * 100).toFixed(1) : '?' },
-        SUI:  { price_usd: prices.SUI,  qty: 471.84, cost_thb: 17191 },
-      },
-      rules: [
-        'SOL・ETHが+50%超えたら25%利確→QQQ',
-        'SUI・FET枠-40%超えたら即撤退',
-        'NVDA：$260超→1株利確 / $190割れ→即撤退',
-        '停戦合意の瞬間にSOL・HYPEを即買い増し（฿20,000〜40,000弾確保）',
-        'XRP・FET：5/15までに反発なければSOL/HYPEへ整理',
-        '毎月฿20,000機械的積み立て継続',
-      ],
-      upcoming_events: [
-        '5/8 任天堂決算',
-        '5/11 日本郵船決算',
-        '5/12 三菱重工決算',
-        '5/15 XRP・FET売却判断期限',
-        '5/20 NVDA決算【最重要】',
-      ],
-      context: 'イラン・米国停戦交渉が膠着中。合意次第でSOL・HYPEが急騰する可能性。停戦弾฿20,000〜40,000はキャッシュキープ中。',
-      triggered_alerts: alerts,
-      usd_thb: usdThb,
-      total_cost_thb: 257281,
-    };
+    const solPnl = prices.SOL ? ((prices.SOL - 3699/35.7*usdThb) / (3699/35.7*usdThb) * 100).toFixed(1) : '?';
+    const ethPnl = prices.ETH ? ((prices.ETH - 94782/usdThb) / (94782/usdThb) * 100).toFixed(1) : '?';
+    const nvdaPnl = prices.NVDA ? ((prices.NVDA - 609/3) / (609/3) * 100).toFixed(1) : '?';
 
-    const prompt = `あなたは世界最高峰の投資アナリストです。以下のポートフォリオデータと市場状況を分析し、今日のアクションプランをLINEメッセージ用に作成してください。
+    const prompt = `あなたは世界最高峰の投資アナリストです。以下のポートフォリオを分析し、今日のアクションプランをLINE用に作成してください（800文字以内）。
 
-ポートフォリオ:
-${JSON.stringify(portfolio, null, 2)}
+【現在価格】
+NVDA: $${prices.NVDA} (損益${nvdaPnl}%)
+QQQ:  $${prices.QQQ}
+MSFT: $${prices.MSFT}
+SOL:  $${prices.SOL} (損益${solPnl}%)
+ETH:  $${prices.ETH} (損益${ethPnl}%)
+HYPE: $${prices.HYPE}
+XRP:  $${prices.XRP}
+FET:  ฿${prices.FET}
+USD/THB: ${usdThb}
 
-以下の形式で、簡潔かつ具体的に日本語で返答してください（LINEなので合計800文字以内）：
+【投資ルール】
+- NVDA $260超→1株利確 / $190割れ→即撤退
+- SOL・ETH +50%超→25%利確→QQQ
+- SUI・FET -40%割れ→即撤退
+- 5/15 XRP・FET判断期限
+- 5/20 NVDA決算【最重要】
+- 停戦合意→SOL・HYPE即買い増し（弾฿20,000〜40,000確保中）
+
+【市場背景】
+イラン停戦交渉膠着中。停戦合意でクリプト急騰期待。
+
+【トリガーアラート】
+${alerts.length > 0 ? alerts.join('\n') : 'なし'}
+
+以下の形式で返答してください：
 
 【今日の総評】
-（相場全体の一言コメント）
+（相場の一言）
 
 【アクション】
-①（具体的に何をすべきか）
-②（次に優先すること）
-③（今は動かすな、という場合はその理由）
+①
+②
+③
 
-【注目ポイント】
-（今日特に見るべき数字や出来事）
+【注目】
+（今日見るべき数字）
 
 【一言】
-（投資家として今の心構え）
-
-トリガーされたアラートがあれば最優先で言及してください。
-感情的にならず、データに基づいて冷静かつ正直に分析してください。`;
+（投資家の心構え）`;
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -100,15 +116,13 @@ ${JSON.stringify(portfolio, null, 2)}
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        max_tokens: 800,
         messages: [{ role: 'user', content: prompt }]
       })
     });
-
     const d = await r.json();
     return d.content?.[0]?.text || null;
   } catch(e) {
-    console.error('AI analysis failed:', e.message);
     return null;
   }
 }
@@ -117,25 +131,28 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
-    const [cryptoData, usdThb] = await Promise.all([
-      fetchCrypto(),
+    const [binancePrices, cgData, usdThb] = await Promise.all([
+      fetchCryptoFromBinance(),
+      fetchFromCoinGecko(),
       fetchUSDTHB()
     ]);
 
     const prices = {
+      // Stocks (hardcoded - updated via import)
       NVDA: 198.45,
       QQQ:  475.44,
       MSFT: 414.20,
-      SOL:      cryptoData['solana']?.usd || null,
-      SOL_THB:  cryptoData['solana']?.thb || null,
-      ETH:      cryptoData['ethereum']?.usd || null,
-      ETH_THB:  cryptoData['ethereum']?.thb || null,
-      HYPE:     cryptoData['hyperliquid']?.usd || null,
-      HYPE_THB: cryptoData['hyperliquid']?.thb || null,
-      XRP:      cryptoData['ripple']?.usd || null,
-      XRP_THB:  cryptoData['ripple']?.thb || null,
-      FET:      cryptoData['fetch-ai']?.thb || null,
-      SUI:      cryptoData['sui']?.usd || null,
+      // Crypto from Binance
+      SOL:  binancePrices['SOL']  || null,
+      ETH:  binancePrices['ETH']  || null,
+      XRP:  binancePrices['XRP']  || null,
+      SUI:  binancePrices['SUI']  || null,
+      // HYPE & FET from CoinGecko
+      HYPE: cgData['hyperliquid']?.usd || null,
+      FET:  cgData['fetch-ai']?.thb   || null,
+      // THB prices
+      SOL_THB:  binancePrices['SOL']  ? binancePrices['SOL']  * usdThb : null,
+      ETH_THB:  binancePrices['ETH']  ? binancePrices['ETH']  * usdThb : null,
     };
 
     // ─── ALERT RULES ───
@@ -147,43 +164,39 @@ export default async function handler(req, res) {
     if (prices.FET && prices.FET <= 3.63) alerts.push(`⚠️ FET ฿${prices.FET?.toFixed(2)} → -40%割れ！即撤退`);
     if (prices.SOL >= 120)  alerts.push(`💥 SOL $${prices.SOL?.toFixed(2)} → 急騰！停戦合意の可能性`);
 
-    // Send urgent alerts immediately
+    // Urgent alerts
     for (const msg of alerts) {
       await sendLINE(`【🚨 OKA QUEST ALERT】\n${msg}`);
     }
 
-    // AI Analysis + Summary
+    // Daily summary + AI analysis
     const hour = new Date().getUTCHours() + 7;
     if (req.query.summary === '1' || hour === 8) {
-      // Get AI analysis
-      const aiAnalysis = await getAIAnalysis(prices, usdThb, alerts);
 
       const header = `📊 OKA QUEST デイリーレポート
 ━━━━━━━━━━━━━━
 株式（前日終値）
-NVDA: $${prices.NVDA?.toFixed(2) ?? '---'}
-QQQ:  $${prices.QQQ?.toFixed(2) ?? '---'}
-MSFT: $${prices.MSFT?.toFixed(2) ?? '---'}
+NVDA: $${prices.NVDA}
+QQQ:  $${prices.QQQ}
+MSFT: $${prices.MSFT}
 ━━━━━━━━━━━━━━
 クリプト（リアルタイム）
 SOL:  $${prices.SOL?.toFixed(2) ?? '---'} (฿${prices.SOL_THB?.toFixed(0) ?? '---'})
 ETH:  $${prices.ETH?.toFixed(2) ?? '---'}
 HYPE: $${prices.HYPE?.toFixed(2) ?? '---'}
-XRP:  $${prices.XRP?.toFixed(2) ?? '---'}
+XRP:  $${prices.XRP?.toFixed(3) ?? '---'}
 FET:  ฿${prices.FET?.toFixed(2) ?? '---'}
+SUI:  $${prices.SUI?.toFixed(3) ?? '---'}
 ━━━━━━━━━━━━━━
-USD/THB: ${usdThb.toFixed(2)}
-━━━━━━━━━━━━━━`;
+USD/THB: ${usdThb.toFixed(2)}`;
 
       await sendLINE(header);
 
-      // Send AI analysis as separate message
-      if (aiAnalysis) {
-        await sendLINE(aiAnalysis);
-      }
+      const ai = await getAIAnalysis(prices, usdThb, alerts);
+      if (ai) await sendLINE(ai);
     }
 
-    res.status(200).json({ prices, alerts, ok: true, checked_at: new Date().toISOString() });
+    res.status(200).json({ prices, alerts, ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message, ok: false });
   }
