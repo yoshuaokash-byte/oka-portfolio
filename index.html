@@ -391,7 +391,7 @@ body::before{
 
 <script>
 // ═══════════════ DATA ═══════════════
-let USD_THB = 35.7;
+let USD_THB = 32.67; // InnovestXレートから算出
 const GOAL = 2000000;
 const ANNUAL_TARGET = 0.30;
 
@@ -429,8 +429,8 @@ const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}ca
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 
 let stocks = ld('rpg_stk',[
-  {symbol:'QQQ',name:'Invesco QQQ',qty:7.09,cost:99683,cc:'THB',type:'stock'},
-  {symbol:'MSFT',name:'Microsoft',qty:3,cost:46827,cc:'THB',type:'stock'},
+  {symbol:'QQQ',name:'Invesco QQQ',qty:7.09,cost:99681,cc:'THB',type:'stock'},
+  {symbol:'MSFT',name:'Microsoft',qty:3,cost:46828,cc:'THB',type:'stock'},
   {symbol:'NVDA',name:'NVIDIA Corp',qty:3,cost:21773,cc:'THB',type:'stock'}
 ]);
 let cryptos = ld('rpg_cry',[
@@ -446,7 +446,7 @@ let cryptos = ld('rpg_cry',[
 const FALLBACK={
   SOL:{thb:2738,usd:76.7},SUI:{thb:30,usd:0.84},FET:{thb:6.5,usd:0.18},
   ETH:{thb:75000,usd:2100},HYPE:{thb:1323,usd:37},XRP:{thb:45,usd:1.26},
-  QQQ:{usd:476},MSFT:{usd:413},NVDA:{usd:200}
+  QQQ:{usd:475.44},MSFT:{usd:414.2},NVDA:{usd:198.45}
 };
 let prices={};
 
@@ -481,15 +481,11 @@ async function fetchYahoo(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),8000);
-    // Vercel serverless proxy - same origin, no CORS issue
-    const r=await fetch('/api/stocks?symbols=QQQ,MSFT,NVDA',{signal:ctrl.signal});
+    const r=await fetch('https://query2.finance.yahoo.com/v7/finance/quote?symbols=QQQ%2CMSFT%2CNVDA&fields=regularMarketPrice',{signal:ctrl.signal,headers:{Accept:'application/json'}});
     clearTimeout(tid);
     const d=await r.json();
-    if(!d.ok||!d.prices)throw new Error('proxy error');
     const res={};
-    Object.entries(d.prices).forEach(([sym,p])=>{
-      res[sym]={usd:p.usd,thb:p.usd*USD_THB};
-    });
+    (d?.quoteResponse?.result||[]).forEach(q=>{if(q.regularMarketPrice)res[q.symbol]={usd:q.regularMarketPrice,thb:q.regularMarketPrice*USD_THB}});
     return Object.keys(res).length>0?res:null;
   }catch{return null;}
 }
