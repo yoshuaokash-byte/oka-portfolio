@@ -216,3 +216,4 @@ export default async function handler(req, res) {
     checked_at: new Date().toISOString()
   });
 }
+
