@@ -126,8 +126,31 @@ USD/THB: ${usdThb.toFixed(2)}
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // Stock prices (hardcoded - updated via import screen)
-  const STOCKS = { NVDA: 198.45, QQQ: 475.44, MSFT: 414.20 };
+  // Stock prices from Twelve Data API
+  const FALLBACK_STOCKS = { NVDA: 198.45, QQQ: 475.44, MSFT: 414.20 };
+  const TWELVE_KEY = process.env.TWELVE_DATA_API_KEY;
+
+  async function fetchStocks() {
+    try {
+      const syms = 'NVDA,QQQ,MSFT';
+      const r = await fetch(
+        `https://api.twelvedata.com/price?symbol=${syms}&apikey=${TWELVE_KEY}`,
+        { headers: { 'Accept': 'application/json' } }
+      );
+      if (!r.ok) throw new Error('TwelveData ' + r.status);
+      const d = await r.json();
+      return {
+        NVDA: parseFloat(d?.NVDA?.price) || FALLBACK_STOCKS.NVDA,
+        QQQ:  parseFloat(d?.QQQ?.price)  || FALLBACK_STOCKS.QQQ,
+        MSFT: parseFloat(d?.MSFT?.price) || FALLBACK_STOCKS.MSFT,
+      };
+    } catch(e) {
+      errors.push('stocks: ' + e.message);
+      return FALLBACK_STOCKS;
+    }
+  }
+
+  const STOCKS = await fetchStocks();
 
   let crypto = {};
   let usdThb = 32.67;
@@ -216,4 +239,3 @@ export default async function handler(req, res) {
     checked_at: new Date().toISOString()
   });
 }
-
