@@ -156,11 +156,10 @@ async function fetchStocks(errors=[]) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  const STOCKS = await fetchStocks(errors);
-
   let crypto = {};
   let usdThb = 32.67;
   const errors = [];
+  const STOCKS = await fetchStocks(errors);
 
   // Fetch in parallel
   const [cryptoResult, fxResult] = await Promise.allSettled([
