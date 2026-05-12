@@ -7,7 +7,7 @@ const fmt2 = v => (v != null && !isNaN(v)) ? parseFloat(v).toFixed(2) : '---';
 const fmt3 = v => (v != null && !isNaN(v)) ? parseFloat(v).toFixed(3) : '---';
 const fmt0 = v => (v != null && !isNaN(v)) ? Math.round(v).toLocaleString() : '---';
 
-const FALLBACK = { NVDA: 198.45, QQQ: 475.44, MSFT: 414.20 };
+const FALLBACK = { NVDA: 198.45, QQQ: 475.44, MSFT: 414.20, POLA: 1296 };
 
 async function sendLINE(text) {
   const r = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -28,10 +28,21 @@ async function fetchStocks() {
       const v = parseFloat(val);
       return (v >= min && v <= max) ? Math.round(v * 100) / 100 : FALLBACK[sym];
     };
+    // Fetch POLA from stooq (Japanese stock)
+    let polaPrice = FALLBACK.POLA;
+    try {
+      const rp = await fetch('https://stooq.com/q/l/?s=4927.jp&f=sd2t2ohlcv&h&e=json',
+        { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const dp = await rp.json();
+      const pp = parseFloat(dp?.symbols?.[0]?.close);
+      if (pp >= 800 && pp <= 3000) polaPrice = pp;
+    } catch {}
+
     return {
       NVDA: p(d?.NVDA?.price, 'NVDA', 80, 400),
       QQQ:  p(d?.QQQ?.price,  'QQQ',  400, 600),
       MSFT: p(d?.MSFT?.price, 'MSFT', 300, 600),
+      POLA: polaPrice,
     };
   } catch {
     return FALLBACK;
@@ -88,6 +99,7 @@ XRP・FET判断期限まで: ${d515}日 | NVDA決算まで: ${d520}日
 
 現在価格:
 NVDA $${p.NVDA}(${nvdaPnl}) | QQQ $${p.QQQ} | MSFT $${p.MSFT}
+POLA ¥${p.POLA ?? '---'}(日本株・J-Beauty 100株保有)
 SOL $${fmt2(p.SOL_USD)} / ฿${fmt0(p.SOL_THB)}(${solPnl})
 ETH $${fmt2(p.ETH_USD)} / ฿${fmt0(p.ETH_THB)}(${ethPnl})
 HYPE $${fmt2(p.HYPE_USD)} | XRP $${fmt3(p.XRP_USD)} | FET ฿${fmt2(p.FET_THB)}(${fetPnl})
@@ -149,6 +161,8 @@ export default async function handler(req, res) {
   if (p.SOL_USD != null && p.SOL_USD >= 156)  alerts.push(`SOL $${fmt2(p.SOL_USD)} → +50%超！25%利確検討`);
   if (p.ETH_USD != null && p.ETH_USD >= 3982) alerts.push(`ETH $${fmt2(p.ETH_USD)} → +50%超！25%利確検討`);
   if (p.FET_THB != null && p.FET_THB <= 3.63) alerts.push(`FET ฿${fmt2(p.FET_THB)} → -40%割れ！即撤退`);
+  if (p.POLA != null && p.POLA >= 1555) alerts.push(`POLA ¥${p.POLA} → +20%超！半分利確検討`);
+  if (p.POLA != null && p.POLA <= 1100) alerts.push(`POLA ¥${p.POLA} → -15%割れ！損切りライン`);
   if (p.SOL_USD != null && p.SOL_USD >= 120)  alerts.push(`SOL $${fmt2(p.SOL_USD)} → 急騰！停戦合意の可能性`);
 
   for (const msg of alerts) {
@@ -167,6 +181,7 @@ export default async function handler(req, res) {
         `NVDA: $${p.NVDA}`,
         `QQQ:  $${p.QQQ}`,
         `MSFT: $${p.MSFT}`,
+        `POLA: ¥${p.POLA ?? '---'}`,
         '━━━━━━━━━━━━━━',
         'クリプト（リアルタイム）',
         `SOL:  $${fmt2(p.SOL_USD)} (฿${fmt0(p.SOL_THB)})`,
