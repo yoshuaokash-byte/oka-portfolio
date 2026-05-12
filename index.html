@@ -431,7 +431,8 @@ const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let stocks = ld('rpg_stk',[
   {symbol:'QQQ',name:'Invesco QQQ',qty:7.09,cost:99681,cc:'THB',type:'stock'},
   {symbol:'MSFT',name:'Microsoft',qty:3,cost:46828,cc:'THB',type:'stock'},
-  {symbol:'NVDA',name:'NVIDIA Corp',qty:3,cost:21773,cc:'THB',type:'stock'}
+  {symbol:'NVDA',name:'NVIDIA Corp',qty:3,cost:21773,cc:'THB',type:'stock'},
+  {symbol:'4927',name:'POLA ORBIS',qty:100,cost:28125,cc:'JPY',type:'stock',jpy:127840}
 ]);
 let cryptos = ld('rpg_cry',[
   {symbol:'SOL',name:'Solana',qty:10.54189518,cost:35132,cc:'THB',type:'crypto'},
@@ -776,6 +777,67 @@ function handleImport(input){
   reader.readAsDataURL(file);
 }
 
+// ═══════════════ ALERTS ═══════════════
+async function requestNotificationPermission(){
+  if(!('Notification' in window))return false;
+  if(Notification.permission==='granted')return true;
+  const p=await Notification.requestPermission();
+  return p==='granted';
+}
+
+function sendNotification(title,body,icon='⚠️'){
+  if(Notification.permission==='granted'){
+    new Notification(icon+' '+title,{body,icon:'/favicon.ico'});
+  }
+}
+
+async function checkAlerts(){
+  try{
+    const r=await fetch('/api/check-alerts');
+    const d=await r.json();
+    if(!d.ok||!d.alerts)return;
+
+    // Show notifications for triggered alerts
+    d.alerts.forEach(alert=>{
+      const key='alerted_'+alert.symbol+'_'+alert.type+'_'+Math.floor(Date.now()/3600000);
+      if(!ld(key,false)){
+        sendNotification(alert.symbol+' '+alert.type, alert.message,'🚨');
+        sv(key,true);
+        // Also update prices if available
+        if(d.prices){
+          Object.entries(d.prices).forEach(([sym,usd])=>{
+            if(prices[sym])prices[sym].usd=usd;
+          });
+        }
+      }
+    });
+
+    // Update alert badge in UI
+    const alertCount=d.alerts.length;
+    const btn=document.querySelector('.ref-btn');
+    if(btn&&alertCount>0){
+      btn.textContent='🚨'+alertCount;
+      btn.style.color='var(--red)';
+      btn.style.borderColor='var(--red)';
+    }
+
+    // Show in alert section
+    if(d.alerts.length>0){
+      const alertSection=document.getElementById('alertSection');
+      if(alertSection){
+        const triggered=d.alerts.map(a=>`
+          <div class="alert-box alert-urgent" style="animation:fadeIn 0.5s">
+            <div class="alert-title">🚨 ${a.symbol} ALERT TRIGGERED</div>
+            <div class="alert-body">${a.message}</div>
+          </div>`).join('');
+        alertSection.innerHTML=triggered+alertSection.innerHTML;
+      }
+    }
+  }catch(e){
+    console.warn('Alert check failed:',e.message);
+  }
+}
+
 // ═══════════════ INIT ═══════════════
 window.addEventListener('load',()=>{
   const VER='rpg_v1';
@@ -790,6 +852,17 @@ window.addEventListener('load',()=>{
   }
   if(!c||Date.now()-t>5*60*1000)refreshAll();
   else{setFallback();Object.assign(prices,c);renderAll();}
+
+  // Request notification permission
+  setTimeout(async()=>{
+    const granted=await requestNotificationPermission();
+    if(granted){
+      // Check alerts on load
+      await checkAlerts();
+      // Check every 30 minutes while app is open
+      setInterval(checkAlerts, 30*60*1000);
+    }
+  }, 2000);
 });
 </script>
 </body>
