@@ -391,7 +391,7 @@ body::before{
 
 <script>
 // ═══════════════ DATA ═══════════════
-let USD_THB = 32.67; // InnovestXレートから算出
+let USD_THB = 32.15; // 2026-05-12 InnovestXレートから算出
 const GOAL = 2000000;
 const ANNUAL_TARGET = 0.30;
 
@@ -429,10 +429,10 @@ const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}ca
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 
 let stocks = ld('rpg_stk',[
-  {symbol:'QQQ',name:'Invesco QQQ',qty:7.09,cost:99681,cc:'THB',type:'stock'},
-  {symbol:'MSFT',name:'Microsoft',qty:3,cost:46828,cc:'THB',type:'stock'},
-  {symbol:'NVDA',name:'NVIDIA Corp',qty:3,cost:21773,cc:'THB',type:'stock'},
-  {symbol:'4927',name:'POLA ORBIS',qty:100,cost:28125,cc:'JPY',type:'stock',jpy:127840}
+  {symbol:'QQQ',name:'Invesco QQQ',qty:7.09,cost:89769,cc:'THB',type:'stock'},
+  {symbol:'MSFT',name:'Microsoft',qty:3,cost:42171,cc:'THB',type:'stock'},
+  {symbol:'NVDA',name:'NVIDIA Corp',qty:3,cost:19608,cc:'THB',type:'stock'},
+  {symbol:'4927',name:'POLA ORBIS',qty:100,cost:26688,cc:'JPY',type:'stock',jpy:131340}
 ]);
 let cryptos = ld('rpg_cry',[
   {symbol:'SOL',name:'Solana',qty:10.54189518,cost:35132,cc:'THB',type:'crypto'},
@@ -540,7 +540,7 @@ async function refreshAll(){
 }
 
 // ═══════════════ CALC ═══════════════
-const aVal=a=>{const p=prices[a.symbol];if(!p)return 0;return a.type==='stock'?a.qty*(p.usd||0)*USD_THB:a.qty*(p.thb||0)};
+const JPY_THB=0.2032; // ¥28,660=฿5,824const aVal=a=>{const p=prices[a.symbol];if(!p)return 0;if(a.type==='stock'){if(a.cc==='JPY')return a.qty*(p.jpy||p.usd*150||0)*JPY_THB;return a.qty*(p.usd||0)*USD_THB;}return a.qty*(p.thb||0)};
 const pnl=a=>{const v=aVal(a),c=a.cost;return {amt:v-c,pct:c>0?(v-c)/c*100:0}};
 const fmt=n=>Math.abs(n)>=1000000?`฿${(n/1000000).toFixed(2)}M`:Math.abs(n)>=1000?`฿${Math.round(n).toLocaleString()}`:`฿${n.toFixed(0)}`;
 const fmtUSD=n=>`$${n.toLocaleString(undefined,{maximumFractionDigits:0})}`;
