@@ -9,6 +9,16 @@ const fmt0 = v => (v != null && !isNaN(v)) ? Math.round(v).toLocaleString() : '-
 
 const FALLBACK = { NVDA: 198.45, QQQ: 475.44, MSFT: 414.20, POLA: 1296 };
 
+// Simple in-memory cache for previous prices (resets on cold start ~daily)
+let prevPrices = {};
+
+function pct(cur, prev) {
+  if (!cur || !prev) return '';
+  const p = ((cur - prev) / prev * 100);
+  const sign = p >= 0 ? '+' : '';
+  return ` (${sign}${p.toFixed(1)}%)`;
+}
+
 async function sendLINE(text) {
   const r = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
@@ -178,18 +188,18 @@ export default async function handler(req, res) {
         '📊 OKA QUEST デイリーレポート',
         '━━━━━━━━━━━━━━',
         '株式（リアルタイム）',
-        `NVDA: $${p.NVDA}`,
-        `QQQ:  $${p.QQQ}`,
-        `MSFT: $${p.MSFT}`,
-        `POLA: ¥${p.POLA ?? '---'}`,
+        `NVDA: $${p.NVDA}${pct(p.NVDA, prevPrices.NVDA)}`,
+        `QQQ:  $${p.QQQ}${pct(p.QQQ, prevPrices.QQQ)}`,
+        `MSFT: $${p.MSFT}${pct(p.MSFT, prevPrices.MSFT)}`,
+        `POLA: ¥${p.POLA ?? '---'}${pct(p.POLA, prevPrices.POLA)}`,
         '━━━━━━━━━━━━━━',
         'クリプト（リアルタイム）',
-        `SOL:  $${fmt2(p.SOL_USD)} (฿${fmt0(p.SOL_THB)})`,
-        `ETH:  $${fmt2(p.ETH_USD)}`,
-        `HYPE: $${fmt2(p.HYPE_USD)}`,
-        `XRP:  $${fmt3(p.XRP_USD)}`,
-        `FET:  ฿${fmt2(p.FET_THB)}`,
-        `SUI:  $${fmt3(p.SUI_USD)}`,
+        `SOL:  $${fmt2(p.SOL_USD)}${pct(p.SOL_USD, prevPrices.SOL_USD)} (฿${fmt0(p.SOL_THB)})`,
+        `ETH:  $${fmt2(p.ETH_USD)}${pct(p.ETH_USD, prevPrices.ETH_USD)}`,
+        `HYPE: $${fmt2(p.HYPE_USD)}${pct(p.HYPE_USD, prevPrices.HYPE_USD)}`,
+        `XRP:  $${fmt3(p.XRP_USD)}${pct(p.XRP_USD, prevPrices.XRP_USD)}`,
+        `FET:  ฿${fmt2(p.FET_THB)}${pct(p.FET_THB, prevPrices.FET_THB)}`,
+        `SUI:  $${fmt3(p.SUI_USD)}${pct(p.SUI_USD, prevPrices.SUI_USD)}`,
         '━━━━━━━━━━━━━━',
         `USD/THB: ${usdThb.toFixed(2)}`,
         `アラート: ${alerts.length}件`,
@@ -200,6 +210,9 @@ export default async function handler(req, res) {
       if (ai) await sendLINE(ai);
     } catch {}
   }
+
+  // Cache current prices for next call's comparison
+  prevPrices = { ...p };
 
   res.status(200).json({
     ok: true,
